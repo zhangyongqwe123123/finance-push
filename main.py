@@ -6,29 +6,38 @@ import re
 
 import requests
 
+import requests
+import re
+
 def get_finance_top10():
-    # 新浪财经滚动新闻API（稳定可靠）
-    url = "https://api.finance.sina.com.cn/index.php?page=1&num=10&column=stock&keyword=&type=1"
+    # 东方财富网滚动新闻页面（稳定可靠）
+    url = "https://finance.eastmoney.com/news/"
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://finance.eastmoney.com/"
     }
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
-        data = resp.json()
+        resp = requests.get(url, headers=headers, timeout=15)
+        resp.encoding = "utf-8"
+        html = resp.text
         
-        if data.get("status") != "ok":
-            return ["获取新浪财经头条失败：API返回状态异常"]
-            
+        # 匹配东方财富新闻标题（适配页面结构）
+        pattern = r'<a href="https://finance.eastmoney.com/news/[^\"]+" target="_blank" title="([^"]+)">'
+        matches = re.findall(pattern, html)
+        
+        # 去重并取前10条
         news_list = []
-        for item in data.get("data", []):
-            title = item.get("title", "").strip()
-            if title:
-                news_list.append(title)
+        seen = set()
+        for title in matches:
+            clean_title = title.strip()
+            if clean_title and clean_title not in seen:
+                seen.add(clean_title)
+                news_list.append(clean_title)
                 if len(news_list) >= 10:
                     break
                     
         if not news_list:
-            return ["获取新浪财经头条失败：未获取到有效新闻"]
+            return ["获取财经头条失败：未匹配到有效新闻"]
         return news_list
     except Exception as e:
         return [f"获取新闻失败: {str(e)}"]
