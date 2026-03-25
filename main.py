@@ -1,19 +1,39 @@
 import requests
 import os
 
+import requests
+import re
+
 def get_finance_top10():
-    url = "https://interface.sina.cn/news/finance_index.d.html"
+    url = "https://finance.sina.com.cn/"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
     try:
-        res = requests.get(url, timeout=10)
-        data = res.json()
-        news_list = data.get("list", [])[:10]  # 取前10条
-        msg = "📈 财经头条 TOP10（每10分钟更新）\n\n"
-        for i, item in enumerate(news_list, 1):
-            title = item.get("title", "")
-            msg += f"{i}. {title}\n"
-        return msg
+        resp = requests.get(url, headers=headers, timeout=10)
+        resp.encoding = "utf-8"
+        html = resp.text
+        
+        # 正则匹配新浪财经头条标题（适配页面结构）
+        pattern = r'<a href=" "]+" target="_blank">(.*?)</a >'
+        matches = re.findall(pattern, html)
+        
+        # 去重+取前10条
+        news_list = []
+        seen = set()
+        for title in matches:
+            clean_title = re.sub(r'<.*?>', '', title).strip()
+            if clean_title and clean_title not in seen:
+                seen.add(clean_title)
+                news_list.append(clean_title)
+                if len(news_list) >= 10:
+                    break
+                    
+        if not news_list:
+            return ["获取新浪财经头条失败：未匹配到有效新闻"]
+        return news_list
     except Exception as e:
-        return f"获取新闻失败: {str(e)}"
+        return [f"获取新闻失败: {str(e)}"]
 
 def send_wechat(msg):
     key = os.environ.get("SERVERCHAN_KEY")
