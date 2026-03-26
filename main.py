@@ -9,35 +9,24 @@ import requests
 import requests
 import re
 
+import feedparser
+
 def get_finance_top10():
-    # 东方财富网滚动新闻页面（稳定可靠）
-    url = "https://finance.eastmoney.com/news/"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Referer": "https://finance.eastmoney.com/"
-    }
+    # 网易财经RSS源（稳定可靠，无需解析HTML）
+    rss_url = "https://money.163.com/special/feed/biz_top/"
     try:
-        resp = requests.get(url, headers=headers, timeout=15)
-        resp.encoding = "utf-8"
-        html = resp.text
-        
-        # 匹配东方财富新闻标题（适配页面结构）
-        pattern = r'<a href="https://finance.eastmoney.com/news/[^\"]+" target="_blank" title="([^"]+)">'
-        matches = re.findall(pattern, html)
-        
-        # 去重并取前10条
+        feed = feedparser.parse(rss_url)
+        if feed.bozo != 0:
+            return ["获取财经头条失败：RSS源解析错误"]
+            
         news_list = []
-        seen = set()
-        for title in matches:
-            clean_title = title.strip()
-            if clean_title and clean_title not in seen:
-                seen.add(clean_title)
-                news_list.append(clean_title)
-                if len(news_list) >= 10:
-                    break
-                    
+        for entry in feed.entries[:10]:
+            title = entry.get("title", "").strip()
+            if title:
+                news_list.append(title)
+                
         if not news_list:
-            return ["获取财经头条失败：未匹配到有效新闻"]
+            return ["获取财经头条失败：未获取到有效新闻"]
         return news_list
     except Exception as e:
         return [f"获取新闻失败: {str(e)}"]
